@@ -1,0 +1,113 @@
+version: '3.8'
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER=$MULLVAD_ACCOUNT
+      - SERVER_HOSTNAMES=us-mia-ovpn-102,us-mia-ovpn-101,us-atl-ovpn-002,us-atl-ovpn-001,us-dal-ovpn-101,us-dal-ovpn-102,us-dal-ovpn-104,us-dal-ovpn-103,us-dal-ovpn-105,us-atl-ovpn-103
+    volumes:
+      - /mnt/big_iron/configs/gluetun/config:/config  # Specify the path to the gluetun config
+    ports:
+      - "7878:7878"
+      - "8989:8989"
+      - "8020:8080"
+      - "9696:9696"
+      - "32400:32400"
+      - "8010:80"
+      - "8443:443"
+      - "1688:1688"
+    restart: unless-stopped
+
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    depends_on:
+      - gluetun
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - /mnt/big_iron/configs/sabnzbd/config:/config
+      - /mnt/big_iron/:/mnt/big_iron
+    restart: unless-stopped
+    network_mode: service:gluetun
+
+  prowlarr:
+    image: linuxserver/prowlarr
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - /mnt/big_iron/configs/prowlarr/config:/config
+      - /mnt/big_iron/:/mnt/big_iron
+    restart: unless-stopped
+    network_mode: service:gluetun
+
+  plex:
+    image: plexinc/pms-docker
+    container_name: plex
+    environment:
+      - TZ=America/New_York
+      - PLEX_CLAIM=$PLEX_CLAIM # Replace with your actual Plex claim token if needed
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /mnt/big_iron/configs/plex/config:/config
+      - /mnt/big_iron/configs/plex/transcode:/transcode
+      - /mnt/big_iron/tv:/data/tv
+      - /mnt/big_iron/movies:/data/movies
+    restart: unless-stopped
+    network_mode: service:gluetun
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - /mnt/big_iron/configs/sonarr/config:/config
+      - /mnt/big_iron/tv:/mnt/big_iron/tv
+    restart: unless-stopped
+    network_mode: service:gluetun
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - /mnt/big_iron/configs/radarr/config:/config
+      - /mnt/big_iron/:/mnt/big_iron
+    restart: unless-stopped
+    network_mode: service:gluetun
+
+  heimdall:
+    image: linuxserver/heimdall
+    container_name: heimdall
+    volumes:
+      - /mnt/big_iron/configs/heimdall/config:/config
+    environment:
+      - PGID=1000
+      - PUID=1000
+    restart: unless-stopped
+    network_mode: service:gluetun
+
+  vlmcsd:
+    image: mikolatero/vlmcsd:latest
+    container_name: vlmcsd
+    environment:
+      - TZ=Etc/UTC
+    restart: unless-stopped
+    network_mode: service:gluetun
