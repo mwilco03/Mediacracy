@@ -1,5 +1,7 @@
 #!/bin/bash
-
+#script might need to be modified to point at docker-compose file 
+#this in conjunction with vpn_update produces a list of servers with 
+#lowest latency
 # Define variables
 gluetun_dir=$1 #"/home/plex/gluetun"
 docker_compose_file="${gluetun_dir}/docker-compose.yml"
