@@ -1,5 +1,7 @@
 #!/bin/bash
-
+#script might need to be modified to point at docker-compose file 
+#this in conjunction with vpn_update produces a list of servers with 
+#lowest latency
 # Read from stdin if no file is provided as input
 if [[ -t 0 ]]; then
     echo "Error: No input provided."
