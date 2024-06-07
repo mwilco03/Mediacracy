@@ -6,10 +6,10 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      - VPN_SERVICE_PROVIDER=mullvad
-      - VPN_TYPE=openvpn
-      - OPENVPN_USER=$MULLVAD_ACCOUNT
-      - SERVER_HOSTNAMES=us-mia-ovpn-102,us-mia-ovpn-101,us-atl-ovpn-002,us-atl-ovpn-001,us-dal-ovpn-101,us-dal-ovpn-102,us-dal-ovpn-104,us-dal-ovpn-103,us-dal-ovpn-105,us-atl-ovpn-103
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER} #mullvad chgange accordingly
+      - VPN_TYPE=${VPN_TYPE} #OpenVPN
+      - OPENVPN_USER=${OPENVPN_USER} #VPN Account number
+      - SERVER_HOSTNAMES=${SERVER_HOSTNAMES} #us-mia-ovpn-102,us-mia-ovpn-101,us-atl-ovpn-002,us-atl-ovpn-001,us-dal-ovpn-101,us-dal-ovpn-102,us-dal-ovpn-104,us-dal-ovpn-103,us-dal-ovpn-105,us-atl-ovpn-103
     volumes:
       - /mnt/big_iron/configs/gluetun/config:/config  # Specify the path to the gluetun config
     ports:
@@ -21,6 +21,8 @@ services:
       - "8010:80"
       - "8443:443"
       - "1688:1688"
+      - "7777:7777"
+      - "27017:27017"
     restart: unless-stopped
 
   sabnzbd:
@@ -56,7 +58,7 @@ services:
     container_name: plex
     environment:
       - TZ=America/New_York
-      - PLEX_CLAIM=$PLEX_CLAIM # Replace with your actual Plex claim token if needed
+      - PLEX_CLAIM=${PLEX_CLAIM} # Replace with your actual Plex claim token if needed
       - PUID=1000
       - PGID=1000
     volumes:
@@ -76,7 +78,7 @@ services:
       - TZ=Etc/UTC
     volumes:
       - /mnt/big_iron/configs/sonarr/config:/config
-      - /mnt/big_iron/tv:/mnt/big_iron/tv
+      - /mnt/big_iron/:/mnt/big_iron
     restart: unless-stopped
     network_mode: service:gluetun
 
@@ -111,3 +113,29 @@ services:
       - TZ=Etc/UTC
     restart: unless-stopped
     network_mode: service:gluetun
+
+  petio:
+    image: ghcr.io/petio-team/petio:latest
+    container_name: petio
+    depends_on:
+      - mongo
+    environment:
+      - PGID=1000
+      - PUID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - /mnt/big_iron/configs/petio/config:/app/api/config
+      - /mnt/big_iron/configs/petio/logs:/app/logs
+    restart: unless-stopped
+    network_mode: service:gluetun
+
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    environment:
+      - PGID=1000
+      - PUID=1000
+      - TZ=Etc/UTC
+    network_mode: service:gluetun
+    volumes:
+      - /mnt/big_iron/configs/mongo/db:/data/db
