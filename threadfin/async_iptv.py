@@ -66,7 +66,10 @@ if __name__ == '__main__':
     active_channels = asyncio.run(main(args.m3u_url, args.timeout, args.check_non_english))
     end_time = time.time()
 
-    print(f"Active channels ({len(active_channels)}):")
+
+    if not args.silent:
+        print(f"Active channels ({len(active_channels)}):")
+    
     for metadata, channel in active_channels:
         print(f"{metadata}\n{channel}")
     
