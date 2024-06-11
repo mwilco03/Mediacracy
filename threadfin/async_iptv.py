@@ -58,6 +58,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='IPTV Scanner')
     parser.add_argument('m3u_url', type=str, help='URL to the .m3u file')
     parser.add_argument('--timeout', '-t', type=int, default=1, help='Timeout for checking channels in seconds')
+    #ToDo Consider bouncing it off of AI for a better understanding this solution is problematic by casting a narrow net
     parser.add_argument('--check-non-english', '-c', action='store_true', help='Ignore titles with non-English characters')
     parser.add_argument('--silent', '-s', action='store_true', help='Suppress stats of active channels and execution time')
     args = parser.parse_args()
