@@ -1,141 +1,268 @@
 version: '3.8'
+
 services:
   gluetun:
-    image: qmcgaw/gluetun
     container_name: gluetun
+    image: gluetun
     cap_add:
       - NET_ADMIN
+    networks:
+      - vpn
     environment:
-      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER} #mullvad chgange accordingly
-      - VPN_TYPE=${VPN_TYPE} #OpenVPN
-      - OPENVPN_USER=${OPENVPN_USER} #VPN Account number
-      - SERVER_HOSTNAMES=${SERVER_HOSTNAMES} #us-mia-ovpn-102,us-mia-ovpn-101,us-atl-ovpn-002,us-atl-ovpn-001,us-dal-ovpn-101,us-dal-ovpn-102,us-dal-ovpn-104,us-dal-ovpn-103,us-dal-ovpn-105,us-atl-ovpn-103
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      - OPENVPN_USER=${OPENVPN_USER}
+      - SERVER_HOSTNAMES=${SERVER_HOSTNAMES}
     volumes:
-      - /mnt/big_iron/configs/gluetun/config:/config  # Specify the path to the gluetun config
-    ports:
-      - "7878:7878"
-      - "8989:8989"
-      - "8020:8080"
-      - "9696:9696"
-      - "32400:32400"
-      - "8010:80"
-      - "8443:443"
-      - "1688:1688"
-      - "7777:7777"
-      - "27017:27017"
+      - ${MEDIACRACY_DIR}/configs/gluetun/config.ovpn:/etc/openvpn/custom/default.ovpn
     restart: unless-stopped
 
   sabnzbd:
-    image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
-    depends_on:
-      - gluetun
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Etc/UTC
+    image: linuxserver/sabnzbd
+    networks:
+      - vpn
     volumes:
-      - /mnt/big_iron/configs/sabnzbd/config:/config
-      - /mnt/big_iron/:/mnt/big_iron
+      - ${MEDIACRACY_DIR}/configs/sabnzbd/config:/config
+      - ${MEDIACRACY_DIR}/downloads:/downloads
+      - ${MEDIACRACY_DIR}/tv:/tv
+      - ${MEDIACRACY_DIR}/movies:/movies
+      - ${MEDIACRACY_DIR}/incomplete:/incomplete-downloads
+    labels:
+      - "homepage.group=Downloader"
+      - "homepage.href=http://${MEDIACRACY_SERVER}:8080"
+      - "homepage.description=Makes Usenet as simple and streamlined as possible."
+      - "homepage.name=Sabnzbd"
+      - "homepage.icon=https://avatars.githubusercontent.com/u/960698"
+      - "traefik.enable=true"
+      - "traefik.http.routers.sabnzbd-rtr.rule=Host(`sabnzbd.${YOUR_DOMAIN}`,`usenet.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.sabnzbd-rtr.entrypoints=websecure"
+      - "traefik.http.routers.sabnzbd-rtr.tls=true"
+      - "traefik.http.services.sabnzbd-svc.loadbalancer.server.port=8080"
     restart: unless-stopped
-    network_mode: service:gluetun
+
+  qbittorrent:
+    container_name: qbittorrent
+    image: linuxserver/qbittorrent
+    networks:
+      - vpn
+    environment:
+      - WEBUI_PORT=9988
+    volumes:
+      - ${MEDIACRACY_DIR}/configs/qbittorrent/config:/config
+      - ${MEDIACRACY_DIR}/downloads:/downloads
+      - ${MEDIACRACY_DIR}/tv:/tv
+      - ${MEDIACRACY_DIR}/movies:/movies
+    labels:
+      - "homepage.group=Downloader"
+      - "homepage.href=http://${MEDIACRACY_SERVER}:9988"
+      - "homepage.description=Bittorrent client programmed in C++ / Qt."
+      - "homepage.name=Qbittorrent"
+      - "homepage.icon=https://avatars.githubusercontent.com/u/2131270"
+      - "traefik.enable=true"
+      - "traefik.http.routers.qbittorrent-rtr.rule=Host(`qbittorrent.${YOUR_DOMAIN}`,`torrent.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.qbittorrent-rtr.entrypoints=websecure"
+      - "traefik.http.routers.qbittorrent-rtr.tls=true"
+      - "traefik.http.services.qbittorrent-svc.loadbalancer.server.port=9988"
+    restart: unless-stopped
 
   prowlarr:
-    image: linuxserver/prowlarr
     container_name: prowlarr
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
+    image: linuxserver/prowlarr
+    networks:
+      - web
     volumes:
-      - /mnt/big_iron/configs/prowlarr/config:/config
-      - /mnt/big_iron/:/mnt/big_iron
+      - ${MEDIACRACY_DIR}/configs/prowlarr/config:/config
+      - ${MEDIACRACY_DIR}/movies:/movies
+      - ${MEDIACRACY_DIR}/downloads:/downloads
+      - ${MEDIACRACY_DIR}/tv:/tv
+    labels:
+      - "homepage.group=STarr"
+      - "homepage.href=http://${MEDIACRACY_SERVER}:9696"
+      - "homepage.description=An indexer manager/proxy built on the popular *arr."
+      - "homepage.name=Prowlarr"
+      - "homepage.icon=https://avatars.githubusercontent.com/u/73049443"
+      - "traefik.enable=true"
+      - "traefik.http.routers.prowlarr-rtr.rule=Host(`prowlarr.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.prowlarr-rtr.entrypoints=websecure"
+      - "traefik.http.routers.prowlarr-rtr.tls=true"
+      - "traefik.http.services.prowlarr-svc.loadbalancer.server.port=9696"
     restart: unless-stopped
-    network_mode: service:gluetun
-
-  plex:
-    image: plexinc/pms-docker
-    container_name: plex
-    environment:
-      - TZ=America/New_York
-      - PLEX_CLAIM=${PLEX_CLAIM} # Replace with your actual Plex claim token if needed
-      - PUID=1000
-      - PGID=1000
-    volumes:
-      - /mnt/big_iron/configs/plex/config:/config
-      - /mnt/big_iron/configs/plex/transcode:/transcode
-      - /mnt/big_iron/tv:/data/tv
-      - /mnt/big_iron/movies:/data/movies
-    restart: unless-stopped
-    network_mode: service:gluetun
-
-  sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
-    container_name: sonarr
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Etc/UTC
-    volumes:
-      - /mnt/big_iron/configs/sonarr/config:/config
-      - /mnt/big_iron/:/mnt/big_iron
-    restart: unless-stopped
-    network_mode: service:gluetun
 
   radarr:
-    image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
+    image: linuxserver/radarr
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Etc/UTC
+      - API_KEY=${RADARR_API_KEY}
+    networks:
+      - web
     volumes:
-      - /mnt/big_iron/configs/radarr/config:/config
-      - /mnt/big_iron/:/mnt/big_iron
+      - ${MEDIACRACY_DIR}/configs/radarr/config:/config
+      - ${MEDIACRACY_DIR}/movies:/movies
+      - ${MEDIACRACY_DIR}/downloads:/downloads
+    labels:
+      - "homepage.group=STarr"
+      - "homepage.href=http://${MEDIACRACY_SERVER}:5454"
+      - "homepage.description=Movie collection manager for Usenet and BitTorrent users."
+      - "homepage.name=Radarr"
+      - "homepage.icon=https://avatars.githubusercontent.com/u/25025331"
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr-rtr.rule=Host(`radarr.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.radarr-rtr.entrypoints=websecure"
+      - "traefik.http.routers.radarr-rtr.tls=true"
+      - "traefik.http.services.radarr-svc.loadbalancer.server.port=5454"
     restart: unless-stopped
-    network_mode: service:gluetun
 
-  heimdall:
-    image: linuxserver/heimdall
-    container_name: heimdall
+  sonarr:
+    container_name: sonarr
+    image: linuxserver/sonarr
+    environment:
+      - API_KEY=${SONARR_API_KEY}
+    networks:
+      - web
     volumes:
-      - /mnt/big_iron/configs/heimdall/config:/config
-    environment:
-      - PGID=1000
-      - PUID=1000
+      - ${MEDIACRACY_DIR}/configs/sonarr/config:/config
+      - ${MEDIACRACY_DIR}/tv:/tv
+      - ${MEDIACRACY_DIR}/downloads:/downloads
+    labels:
+      - "homepage.group=STarr"
+      - "homepage.href=http://${MEDIACRACY_SERVER}:8989"
+      - "homepage.description=Sonarr is a PVR for Usenet and BitTorrent users."
+      - "homepage.name=Sonarr"
+      - "homepage.icon=https://avatars.githubusercontent.com/u/1082903"
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr-rtr.rule=Host(`sonarr.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.sonarr-rtr.entrypoints=websecure"
+      - "traefik.http.routers.sonarr-rtr.tls=true"
+      - "traefik.http.services.sonarr-svc.loadbalancer.server.port=8989"
     restart: unless-stopped
-    network_mode: service:gluetun
 
-  vlmcsd:
-    image: mikolatero/vlmcsd:latest
-    container_name: vlmcsd
+  notifiarr:
+    container_name: notifiarr
+    image: golift/notifiarr
     environment:
-      - TZ=Etc/UTC
+      - NOTIFIARR_KEY=${NOTIFIARR_KEY}
+    networks:
+      - web
+    volumes:
+      - ${MEDIACRACY_DIR}/configs/notifiarr:/config
+      - /var/run/utmp:/var/run/utmp
+      - /etc/machine-id:/etc/machine-id
+    labels:
+      - "homepage.group=STarr"
+      - "homepage.href=http://${MEDIACRACY_SERVER}:5454"
+      - "homepage.description=Unified client for *arr enables content requests also provides reports for Plex usage."
+      - "homepage.name=Notifiarr"
+      - "homepage.icon=https://avatars.githubusercontent.com/u/77931263"
+      - "traefik.enable=true"
+      - "traefik.http.routers.notifiarr-rtr.rule=Host(`notifiarr.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.notifiarr-rtr.entrypoints=websecure"
+      - "traefik.http.routers.notifiarr-rtr.tls=true"
+      - "traefik.http.services.notifiarr-svc.loadbalancer.server.port=5454"
     restart: unless-stopped
-    network_mode: service:gluetun
+
+  plex:
+    container_name: plex
+    image: linuxserver/plex
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - PLEX_CLAIM=${PLEX_CLAIM}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    networks:
+      - web
+    volumes:
+      - ${MEDIACRACY_DIR}/configs/plex/config:/config
+      - ${MEDIACRACY_DIR}/configs/plex/transcode:/transcode
+      - ${MEDIACRACY_DIR}/tv:/tv
+      - ${MEDIACRACY_DIR}/movies:/movies
+    labels:
+      - "homepage.group=Media"
+      - "homepage.href=http://${MEDIACRACY_SERVER}:32400"
+      - "homepage.description=Organizes video, music and photos from libraries and streams them to all of your screens."
+      - "homepage.name=Plex"
+      - "homepage.icon=https://avatars.githubusercontent.com/u/324832"
+      - "traefik.enable=true"
+      - "traefik.http.routers.plex-rtr.rule=Host(`plex.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.plex-rtr.entrypoints=websecure"
+      - "traefik.http.routers.plex-rtr.tls=true"
+      - "traefik.http.services.plex-svc.loadbalancer.server.port=32400"
+    restart: unless-stopped
 
   petio:
-    image: ghcr.io/petio-team/petio:latest
     container_name: petio
+    image: ghcr.io/petio-team/petio
+    networks:
+      - web
     depends_on:
       - mongo
-    environment:
-      - PGID=1000
-      - PUID=1000
-      - TZ=Etc/UTC
-    volumes:
-      - /mnt/big_iron/configs/petio/config:/app/api/config
-      - /mnt/big_iron/configs/petio/logs:/app/logs
+    labels:
+      - "homepage.group=Media"
+      - "homepage.href=http://${MEDIACRACY_SERVER}:7777"
+      - "homepage.description=Petio is a third party companion app available to Plex server owners to allow their users to request, review and discover content."
+      - "homepage.name=Petio"
+      - "homepage.icon=https://avatars.githubusercontent.com/u/75477127"
+      - "traefik.enable=true"
+      - "traefik.http.routers.petio-rtr.rule=Host(`petio.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.petio-rtr.entrypoints=websecure"
+      - "traefik.http.routers.petio-rtr.tls=true"
+      - "traefik.http.services.petio-svc.loadbalancer.server.port=7777"
     restart: unless-stopped
-    network_mode: service:gluetun
 
   mongo:
-    image: mongo:4.4
     container_name: mongo
-    environment:
-      - PGID=1000
-      - PUID=1000
-      - TZ=Etc/UTC
-    network_mode: service:gluetun
+    image: mongo
+    networks:
+      - internal
+    restart: unless-stopped
+
+  homepage:
+    container_name: homepage
+    image: ghcr.io/gethomepage/homepage
+    networks:
+      - web
+    labels:
+      - "homepage.group=Utilities"
+      - "homepage.href=http://${MEDIACRACY_SERVER}:3000"
+      - "homepage.description=Customizable homepage for your server"
+      - "homepage.name=Homepage"
+      - "homepage.icon=/path/to/icon.png"
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage-rtr.rule=Host(`homepage.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.homepage-rtr.entrypoints=web"
+    restart: unless-stopped
+
+  traefik:
+    container_name: traefik
+    image: traefik:v2.4
+    command:
+      - "--providers.docker"
+      - "--entrypoints.web.address=:80"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - web
     volumes:
-      - /mnt/big_iron/configs/mongo/db:/data/db
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${MEDIACRACY_DIR}/configs/traefik/config/traefik.yml:/etc/traefik/traefik.yml
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${YOUR_DOMAIN}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=web"
+    restart: unless-stopped
+
+networks:
+  vpn:
+    driver: bridge
+  web:
+    driver: bridge
+  internal:
+    driver: bridge
