@@ -6,13 +6,15 @@ services:
     image: qmcgaw/gluetun
     cap_add:
       - NET_ADMIN
-    networks:
-      - vpn
+    user: "${UID}:${GID}"
     environment:
+      - TZ=${TZ}
       - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
       - VPN_TYPE=${VPN_TYPE}
       - OPENVPN_USER=${OPENVPN_USER}
       - SERVER_HOSTNAMES=${SERVER_HOSTNAMES}
+    networks:
+      - vpn
     volumes:
       - ${MEDIACRACY_DIR}/configs/gluetun/config.ovpn:/etc/openvpn/custom/default.ovpn
     restart: unless-stopped
@@ -20,8 +22,13 @@ services:
   sabnzbd:
     container_name: sabnzbd
     image: linuxserver/sabnzbd
+    user: "${UID}:${GID}"
+    environment:
+      - TZ=${TZ}
     networks:
       - vpn
+    expose:
+      - "8080"
     volumes:
       - ${MEDIACRACY_DIR}/configs/sabnzbd/config:/config
       - ${MEDIACRACY_DIR}/downloads:/downloads
@@ -30,7 +37,7 @@ services:
       - ${MEDIACRACY_DIR}/incomplete:/incomplete-downloads
     labels:
       - "homepage.group=Downloader"
-      - "homepage.href=http://${MEDIACRACY_SERVER}:8080"
+      - "homepage.href=https://usenet.${YOUR_DOMAIN}"
       - "homepage.description=Makes Usenet as simple and streamlined as possible."
       - "homepage.name=Sabnzbd"
       - "homepage.icon=https://avatars.githubusercontent.com/u/960698"
@@ -44,10 +51,14 @@ services:
   qbittorrent:
     container_name: qbittorrent
     image: linuxserver/qbittorrent
+    user: "${UID}:${GID}"
+    environment:
+      - TZ=${TZ}
+      - WEBUI_PORT=9988
     networks:
       - vpn
-    environment:
-      - WEBUI_PORT=9988
+    expose:
+      - "9988"
     volumes:
       - ${MEDIACRACY_DIR}/configs/qbittorrent/config:/config
       - ${MEDIACRACY_DIR}/downloads:/downloads
@@ -56,7 +67,7 @@ services:
       - ${MEDIACRACY_DIR}/incomplete:/incomplete
     labels:
       - "homepage.group=Downloader"
-      - "homepage.href=http://${MEDIACRACY_SERVER}:9988"
+      - "homepage.href=https://torrent.${YOUR_DOMAIN}"
       - "homepage.description=Bittorrent client programmed in C++ / Qt."
       - "homepage.name=Qbittorrent"
       - "homepage.icon=https://avatars.githubusercontent.com/u/2131270"
@@ -70,9 +81,14 @@ services:
   prowlarr:
     container_name: prowlarr
     image: linuxserver/prowlarr
+    user: "${UID}:${GID}"
+    environment:
+      - TZ=${TZ}
     networks:
       - web
       - vpn
+    expose:
+      - "9696"
     volumes:
       - ${MEDIACRACY_DIR}/configs/prowlarr/config:/config
       - ${MEDIACRACY_DIR}/movies:/movies
@@ -80,7 +96,7 @@ services:
       - ${MEDIACRACY_DIR}/tv:/tv
     labels:
       - "homepage.group=STarr"
-      - "homepage.href=http://${MEDIACRACY_SERVER}:9696"
+      - "homepage.href=https://prowlarr${YOUR_DOMAIN}"
       - "homepage.description=An indexer manager/proxy built on the popular *arr."
       - "homepage.name=Prowlarr"
       - "homepage.icon=https://avatars.githubusercontent.com/u/73049443"
@@ -95,17 +111,21 @@ services:
     container_name: radarr
     image: linuxserver/radarr
     environment:
+      - TZ=${TZ}
       - API_KEY=${RADARR_API_KEY}
+    user: "${UID}:${GID}"
     networks:
       - web
       - vpn
+    expose:
+      - "5454"
     volumes:
       - ${MEDIACRACY_DIR}/configs/radarr/config:/config
       - ${MEDIACRACY_DIR}/movies:/movies
       - ${MEDIACRACY_DIR}/downloads:/downloads
     labels:
       - "homepage.group=STarr"
-      - "homepage.href=http://${MEDIACRACY_SERVER}:5454"
+      - "homepage.href=https://radarr.${YOUR_DOMAIN}"
       - "homepage.description=Movie collection manager for Usenet and BitTorrent users."
       - "homepage.name=Radarr"
       - "homepage.icon=https://avatars.githubusercontent.com/u/25025331"
@@ -120,17 +140,21 @@ services:
     container_name: sonarr
     image: linuxserver/sonarr
     environment:
+      - TZ=${TZ}
       - API_KEY=${SONARR_API_KEY}
+    user: "${UID}:${GID}"
     networks:
       - web
       - vpn
+    expose:
+      - "8989"
     volumes:
       - ${MEDIACRACY_DIR}/configs/sonarr/config:/config
       - ${MEDIACRACY_DIR}/tv:/tv
       - ${MEDIACRACY_DIR}/downloads:/downloads
     labels:
       - "homepage.group=STarr"
-      - "homepage.href=http://${MEDIACRACY_SERVER}:8989"
+      - "homepage.href=https://sonarr.${YOUR_DOMAIN}"
       - "homepage.description=Sonarr is a PVR for Usenet and BitTorrent users."
       - "homepage.name=Sonarr"
       - "homepage.icon=https://avatars.githubusercontent.com/u/1082903"
@@ -145,17 +169,21 @@ services:
     container_name: notifiarr
     image: golift/notifiarr
     environment:
+      - TZ=${TZ}
       - NOTIFIARR_KEY=${NOTIFIARR_KEY}
+    user: "${UID}:${GID}"
     networks:
       - web
       - vpn
+    expose:
+      - "5454"
     volumes:
       - ${MEDIACRACY_DIR}/configs/notifiarr:/config
       - /var/run/utmp:/var/run/utmp
       - /etc/machine-id:/etc/machine-id
     labels:
       - "homepage.group=STarr"
-      - "homepage.href=http://${MEDIACRACY_SERVER}:5454"
+      - "homepage.href=https://notifarr.${YOUR_DOMAIN}"
       - "homepage.description=Unified client for *arr enables content requests also provides reports for Plex usage."
       - "homepage.name=Notifiarr"
       - "homepage.icon=https://avatars.githubusercontent.com/u/77931263"
@@ -170,6 +198,7 @@ services:
     container_name: plex
     image: linuxserver/plex
     environment:
+      - TZ=${TZ}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
       - PLEX_CLAIM=${PLEX_CLAIM}
@@ -178,8 +207,20 @@ services:
         reservations:
           devices:
             - capabilities: [gpu]
+    user: "${UID}:${GID}"
     networks:
       - web
+    expose:
+      - "32400"  # Main communication port for the Plex server
+      - "1900"   # SSDP for discovery
+      - "3005"   # Plex Companion
+      - "5353"   # Zeroconf network discovery
+      - "8324"   # For Roku and Companion remote control
+      - "32410"  # GDM network discovery
+      - "32412"  # GDM network discovery
+      - "32413"  # GDM network discovery
+      - "32414"  # GDM network discovery
+      - "32469"  # DLNA server    
     volumes:
       - ${MEDIACRACY_DIR}/configs/plex/config:/config
       - ${MEDIACRACY_DIR}/configs/plex/transcode:/transcode
@@ -187,7 +228,7 @@ services:
       - ${MEDIACRACY_DIR}/movies:/movies
     labels:
       - "homepage.group=Media"
-      - "homepage.href=http://${MEDIACRACY_SERVER}:32400"
+      - "homepage.href=https://plex.${YOUR_DOMAIN}"
       - "homepage.description=Organizes video, music and photos from libraries and streams them to all of your screens."
       - "homepage.name=Plex"
       - "homepage.icon=https://avatars.githubusercontent.com/u/324832"
@@ -201,16 +242,22 @@ services:
   petio:
     container_name: petio
     image: ghcr.io/petio-team/petio
+    environment:
+      - TZ=${TZ}
+    user: "${UID}:${GID}"
     networks:
       - web
+    expose:
+      - "7777"
     volumes:
       - ${MEDIACRACY_DIR}/configs/petio/config:/app/api/config
       - ${MEDIACRACY_DIR}/configs/petio/logs:/app/logs
     depends_on:
       - mongo
+      - plex
     labels:
       - "homepage.group=Media"
-      - "homepage.href=http://${MEDIACRACY_SERVER}:7777"
+      - "homepage.href=https://petio.${YOUR_DOMAIN}"
       - "homepage.description=Petio is a third party companion app available to Plex server owners to allow their users to request, review and discover content."
       - "homepage.name=Petio"
       - "homepage.icon=https://avatars.githubusercontent.com/u/75477127"
@@ -224,14 +271,24 @@ services:
   mongo:
     container_name: mongo
     image: mongo
+    environment:
+      - TZ=${TZ}
+    user: "${UID}:${GID}"
     networks:
       - internal
       - web
+    expose:
+      - "27017"
+    volumes:
+      - ${MEDIACRACY_DIR}/configs/mongo/config/db:/data/db
     restart: unless-stopped
 
   homepage:
     container_name: homepage
     image: ghcr.io/gethomepage/homepage
+    environment:
+      - TZ=${TZ}
+    user: "${UID}:${GID}"
     networks:
       - web
       - vpn
@@ -240,7 +297,7 @@ services:
       - ${MEDIACRACY_DIR}/configs/homepage/config:/app/config
     labels:
       - "homepage.group=Utilities"
-      - "homepage.href=http://${MEDIACRACY_SERVER}:3000"
+      - "homepage.href=https://homepage.${YOUR_DOMAIN}"
       - "homepage.description=Customizable homepage for your server"
       - "homepage.name=Homepage"
       - "homepage.icon=/path/to/icon.png"
@@ -260,6 +317,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - TZ=${TZ}
+    user: "${UID}:${GID}"
     networks:
       - web
       - vpn
