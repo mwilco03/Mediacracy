@@ -247,6 +247,7 @@ services:
     user: "${UID}:${GID}"
     networks:
       - web
+      - internal
     expose:
       - "7777"
     volumes:
@@ -276,7 +277,6 @@ services:
     user: "${UID}:${GID}"
     networks:
       - internal
-      - web
     expose:
       - "27017"
     volumes:
