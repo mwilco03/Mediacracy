@@ -3,7 +3,7 @@ version: '3.8'
 services:
   gluetun:
     container_name: gluetun
-    image: gluetun
+    image: qmcgaw/gluetun
     cap_add:
       - NET_ADMIN
     networks:
@@ -53,6 +53,7 @@ services:
       - ${MEDIACRACY_DIR}/downloads:/downloads
       - ${MEDIACRACY_DIR}/tv:/tv
       - ${MEDIACRACY_DIR}/movies:/movies
+      - ${MEDIACRACY_DIR}/incomplete:/incomplete
     labels:
       - "homepage.group=Downloader"
       - "homepage.href=http://${MEDIACRACY_SERVER}:9988"
@@ -71,6 +72,7 @@ services:
     image: linuxserver/prowlarr
     networks:
       - web
+      - vpn
     volumes:
       - ${MEDIACRACY_DIR}/configs/prowlarr/config:/config
       - ${MEDIACRACY_DIR}/movies:/movies
@@ -96,6 +98,7 @@ services:
       - API_KEY=${RADARR_API_KEY}
     networks:
       - web
+      - vpn
     volumes:
       - ${MEDIACRACY_DIR}/configs/radarr/config:/config
       - ${MEDIACRACY_DIR}/movies:/movies
@@ -120,6 +123,7 @@ services:
       - API_KEY=${SONARR_API_KEY}
     networks:
       - web
+      - vpn
     volumes:
       - ${MEDIACRACY_DIR}/configs/sonarr/config:/config
       - ${MEDIACRACY_DIR}/tv:/tv
@@ -144,6 +148,7 @@ services:
       - NOTIFIARR_KEY=${NOTIFIARR_KEY}
     networks:
       - web
+      - vpn
     volumes:
       - ${MEDIACRACY_DIR}/configs/notifiarr:/config
       - /var/run/utmp:/var/run/utmp
@@ -198,6 +203,9 @@ services:
     image: ghcr.io/petio-team/petio
     networks:
       - web
+    volumes:
+      - ${MEDIACRACY_DIR}/configs/petio/config:/app/api/config
+      - ${MEDIACRACY_DIR}/configs/petio/logs:/app/logs
     depends_on:
       - mongo
     labels:
@@ -218,6 +226,7 @@ services:
     image: mongo
     networks:
       - internal
+      - web
     restart: unless-stopped
 
   homepage:
@@ -225,6 +234,10 @@ services:
     image: ghcr.io/gethomepage/homepage
     networks:
       - web
+      - vpn
+      - internal
+    volumes:
+      - ${MEDIACRACY_DIR}/configs/homepage/config:/app/config
     labels:
       - "homepage.group=Utilities"
       - "homepage.href=http://${MEDIACRACY_SERVER}:3000"
@@ -249,9 +262,11 @@ services:
       - "443:443"
     networks:
       - web
+      - vpn
+      - internal
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${MEDIACRACY_DIR}/configs/traefik/config/traefik.yml:/etc/traefik/traefik.yml
+      - ${MEDIACRACY_DIR}/configs/traefik/traefik.yml:/etc/traefik/traefik.yml
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.rule=Host(`traefik.${YOUR_DOMAIN}`)"
